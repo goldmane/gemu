@@ -35,6 +35,14 @@ func (f *CpuFlag) GetFlag(flag uint8) bool {
 	return (f.flags & flag) != 0
 }
 
+func (f *CpuFlag) GetFlagUint8(flag uint8) uint8 {
+	if (f.flags & flag) != 0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 func (f *CpuFlag) SetCarry(value uint8) {
 	f.SetFlag(Carry, value&Carry != 0)
 }

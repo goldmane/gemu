@@ -46,8 +46,13 @@ type CPU struct {
 
 	Flags gemu.CpuFlag
 
-	Temp   uint16
-	PrevPC uint16
+	TempValue        uint8
+	TempValue16      uint16
+	TempAddress      uint16
+	TempAddressValue uint8
+	PrevPC           uint16
+
+	DetailsOverride string
 
 	CyclesRemaining uint8
 	TotalCycles     uint64
@@ -85,19 +90,19 @@ func (cpu *CPU) GetPC() uint16 {
 	return cpu.pc
 }
 
-func (cpu *CPU) Fetch() uint8 {
-	cpu.Temp = uint16(0x0)<<8 | uint16(cpu.memory[cpu.pc])
-	fmt.Printf("%02X ", cpu.Temp)
+func (cpu *CPU) Fetch() (uint8, string) {
+	cpu.TempAddress = uint16(0x0)<<8 | uint16(cpu.memory[cpu.pc])
+	p := fmt.Sprintf("%02X ", cpu.TempAddress)
 	cpu.pc++
-	return uint8(cpu.Temp & 0xFF)
+	return uint8(cpu.TempAddress & 0xFF), p
 }
 
-func (cpu *CPU) Fetch16() uint16 {
-	low := cpu.Fetch()
-	high := cpu.Fetch()
-	fmt.Print(" ")
-	cpu.Temp = uint16(high)<<8 | uint16(low)
-	return cpu.Temp
+func (cpu *CPU) Fetch16() (uint16, string) {
+	low, ls := cpu.Fetch()
+	high, hs := cpu.Fetch()
+	// fmt.Print(" ")
+	cpu.TempAddress = uint16(high)<<8 | uint16(low)
+	return cpu.TempAddress, (ls + hs + " ")
 }
 
 func (cpu *CPU) FetchAddress(addr uint16) uint8 {
@@ -109,13 +114,17 @@ func (cpu *CPU) Store(addr uint16, v uint8) {
 }
 
 func (cpu *CPU) StackPush(v uint8) {
-	cpu.memory[cpu.SP] = v
+	a := uint16(0x0100) | uint16(cpu.SP)
+	// cpu.memory[cpu.SP] = v
+	cpu.memory[a] = v
 	cpu.SP--
 }
 
 func (cpu *CPU) StackPop() uint8 {
 	cpu.SP++
-	r := cpu.memory[cpu.SP]
+	a := uint16(0x0100) | uint16(cpu.SP)
+	// r := cpu.memory[cpu.SP]
+	r := cpu.memory[a]
 	return r
 }
 
@@ -130,6 +139,9 @@ const (
 	ZeroPageY
 	Implicit
 	Relative
+	Accumulator
+	IndirectX
+	IndirectY
 )
 
 func (cpu CPU) PrintDetails(addressMode uint8) string {
@@ -155,4 +167,27 @@ func (cpu CPU) PrintDetails(addressMode uint8) string {
 
 	// return fmt.Sprintf("%-28s%s %s %s", d, r1, b, c)
 	return fmt.Sprintf("%s %s %s", r1, b, c)
+}
+
+func (cpu CPU) GetMemory() []byte {
+	return cpu.memory
+}
+
+func (cpu CPU) FindInMemory(v uint8) {
+	fmt.Printf("\nLooking for %02X:\n", v)
+	for i := 0; i < len(cpu.memory); i++ {
+		if cpu.memory[i] == v {
+			fmt.Printf("%04X\n", i)
+		}
+	}
+}
+
+func (cpu CPU) PrintStack() {
+	start := uint16(0x01FD)
+	end := (uint16(0x0100) | uint16(cpu.SP)) - 1
+	fmt.Printf("\nStack from 0x01FD to 0x%04X:\n", end)
+	for i := start; i >= end; i -= 0x01 {
+		fmt.Printf("0x%04X: 0x%02X\n", i, cpu.memory[i])
+	}
+	fmt.Println()
 }
