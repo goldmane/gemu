@@ -49,6 +49,7 @@ type CPU struct {
 	TempValue        uint8
 	TempValue16      uint16
 	TempAddress      uint16
+	TempAddress_2    uint16
 	TempAddressValue uint8
 	PrevPC           uint16
 
@@ -93,6 +94,7 @@ func (cpu *CPU) GetPC() uint16 {
 func (cpu *CPU) Fetch() (uint8, string) {
 	cpu.TempAddress = uint16(0x0)<<8 | uint16(cpu.memory[cpu.pc])
 	p := fmt.Sprintf("%02X ", cpu.TempAddress)
+	cpu.PrevPC = cpu.pc
 	cpu.pc++
 	return uint8(cpu.TempAddress & 0xFF), p
 }
@@ -100,7 +102,6 @@ func (cpu *CPU) Fetch() (uint8, string) {
 func (cpu *CPU) Fetch16() (uint16, string) {
 	low, ls := cpu.Fetch()
 	high, hs := cpu.Fetch()
-	// fmt.Print(" ")
 	cpu.TempAddress = uint16(high)<<8 | uint16(low)
 	return cpu.TempAddress, (ls + hs + " ")
 }
@@ -134,7 +135,7 @@ const (
 	AbsoluteX
 	AbsoluteY
 	Immediate
-	ZeroPageA
+	ZeroPage
 	ZeroPageX
 	ZeroPageY
 	Implicit
@@ -144,7 +145,7 @@ const (
 	IndirectY
 )
 
-func (cpu CPU) PrintDetails(addressMode uint8) string {
+func (cpu CPU) PrintDetails(addressMode uint8, counter uint64) string {
 
 	r1 := (func(addressMode uint8) string {
 		var a, x, y uint8

@@ -14,19 +14,17 @@ import (
 
 func HighByte(a uint16) uint8 {
 	h := uint8(a >> 8)
-	// fmt.Printf("\n\nhi: %02x\n\n", h)
 	return h
 }
 
 func LowByte(a uint16) uint8 {
 	b := uint8(0xFF & a)
-	// fmt.Printf("\n\nlo: %02x\n\n", b)
 	return b
 }
 
 func PageCrossed(a uint16, b uint16) bool {
-	pa := (a & 0xFF) >> 8
-	pb := (b & 0xFF) >> 8
+	pa := a >> 8
+	pb := b >> 8
 	return pa != pb
 }
 
@@ -58,13 +56,14 @@ var instructions = map[uint8]Instruction{
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
 		return fmt.Sprintf("#$%02X", cpu.TempAddress)
 	}},
-	0x86: {Opcode: 0x86, Label: "STX", Length: 2, AddressMode: cpu.ZeroPageX, Function: func(cpu *cpu.CPU) (uint8, string) {
+	0x86: {Opcode: 0x86, Label: "STX", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
 		a, s := cpu.Fetch()
+		cpu.TempValue = cpu.FetchAddress(uint16(a))
 		cpu.TempAddress = uint16(a)
 		cpu.Store(cpu.TempAddress, cpu.X.GetValue())
 		return 3, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
-		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.X.GetValue())
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
 	}},
 	0x20: {Opcode: 0x86, Label: "JSR", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
 		// push the current PC + 2 onto the stack
@@ -102,9 +101,9 @@ var instructions = map[uint8]Instruction{
 		if cpu.Flags.GetFlag(gemu.Carry) {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -123,9 +122,9 @@ var instructions = map[uint8]Instruction{
 		if !cpu.Flags.GetFlag(gemu.Carry) {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -148,9 +147,9 @@ var instructions = map[uint8]Instruction{
 		if cpu.Flags.GetFlag(gemu.Zero) {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -164,15 +163,15 @@ var instructions = map[uint8]Instruction{
 		if !z {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
 		return fmt.Sprintf("$%04X", cpu.TempAddress)
 	}},
-	0x85: {Opcode: 0x85, Label: "STA", Length: 2, AddressMode: cpu.ZeroPageA, Function: func(cpu *cpu.CPU) (uint8, string) {
+	0x85: {Opcode: 0x85, Label: "STA", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
 		a, s := cpu.Fetch()
 		cpu.TempAddress = uint16(a)
 		cpu.TempValue = cpu.FetchAddress(cpu.TempAddress)
@@ -181,7 +180,7 @@ var instructions = map[uint8]Instruction{
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
 		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
 	}},
-	0x24: {Opcode: 0x24, Label: "BIT", Length: 2, AddressMode: cpu.ZeroPageA, Function: func(cpu *cpu.CPU) (uint8, string) {
+	0x24: {Opcode: 0x24, Label: "BIT", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
 		a, s := cpu.Fetch()              // get the address
 		v := cpu.FetchAddress(uint16(a)) // get the value from that address
 		cpu.TempValue = uint8(v)
@@ -201,9 +200,9 @@ var instructions = map[uint8]Instruction{
 		if cpu.Flags.GetFlag(gemu.Overflow) {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -216,9 +215,9 @@ var instructions = map[uint8]Instruction{
 		if !cpu.Flags.GetFlag(gemu.Overflow) {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -231,9 +230,9 @@ var instructions = map[uint8]Instruction{
 		if !cpu.Flags.GetFlag(gemu.Negative) {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -242,7 +241,6 @@ var instructions = map[uint8]Instruction{
 	0x60: {Opcode: 0x60, Label: "RTS", Length: 1, AddressMode: cpu.Implicit, Function: func(cpu *cpu.CPU) (uint8, string) {
 		lo := cpu.StackPop()
 		hi := cpu.StackPop()
-		// fmt.Printf("\n\n%02x %02x\n\n", lo, hi)
 		cpu.SetPC(ToAddress(hi, lo) + 1)
 		return 6, ""
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -333,9 +331,9 @@ var instructions = map[uint8]Instruction{
 		if cpu.Flags.GetFlag(gemu.Negative) {
 			cycles += 1
 			cpu.SetPC(cpu.TempAddress)
-		}
-		if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
-			cycles += 1
+			if PageCrossed(cpu.PrevPC, cpu.TempAddress) {
+				cycles += 1
+			}
 		}
 		return cycles, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
@@ -632,7 +630,6 @@ var instructions = map[uint8]Instruction{
 			v = v | 0x01
 		}
 		cpu.Flags.SetFlag(gemu.Carry, a&0x80 != 0)
-		// cpu.Flags.SetCarry(v)
 		cpu.A.SetRegister(v)
 		cpu.Flags.SetZeroByValue(v)
 		cpu.Flags.SetNegative(v)
@@ -640,7 +637,7 @@ var instructions = map[uint8]Instruction{
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
 		return "A"
 	}},
-	0xA5: {Opcode: 0xA5, Label: "LDA", Length: 2, AddressMode: cpu.ZeroPageA, Function: func(cpu *cpu.CPU) (uint8, string) {
+	0xA5: {Opcode: 0xA5, Label: "LDA", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
 		ta, s := cpu.Fetch()
 		// cpu.TempValue = ta
 		cpu.TempValue = cpu.FetchAddress(uint16(ta) & 0x00FF)
@@ -889,7 +886,7 @@ var instructions = map[uint8]Instruction{
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
 		return fmt.Sprintf("($%02X,X) @ %02X = %04X = %02X", cpu.TempAddress, cpu.TempValue, cpu.TempValue16, cpu.TempAddressValue)
 	}},
-	0xA4: {Opcode: 0xA4, Label: "LDY", Length: 2, AddressMode: cpu.ZeroPageA, Function: func(cpu *cpu.CPU) (uint8, string) {
+	0xA4: {Opcode: 0xA4, Label: "LDY", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
 		ta, s := cpu.Fetch()
 		v := cpu.FetchAddress(uint16(ta))
 		cpu.Y.SetRegister(v)
@@ -898,6 +895,616 @@ var instructions = map[uint8]Instruction{
 		return 3, s
 	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
 		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.Y.GetValue())
+	}},
+	0x84: {Opcode: 0x84, Label: "STY", Length: 2, AddressMode: cpu.ZeroPageX, Function: func(cpu *cpu.CPU) (uint8, string) {
+		a, s := cpu.Fetch()
+		cpu.TempValue = cpu.FetchAddress(uint16(a))
+		cpu.TempAddress = uint16(a)
+		cpu.Store(cpu.TempAddress, cpu.Y.GetValue())
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xA6: {Opcode: 0xA6, Label: "LDX", Length: 2, AddressMode: cpu.ZeroPageX, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		cpu.TempAddress = uint16(ta)
+		v := cpu.FetchAddress(cpu.TempAddress)
+		cpu.X.SetRegister(v)
+		cpu.Flags.SetZeroByValue(cpu.X.GetValue())
+		cpu.Flags.SetNegative(cpu.X.GetValue())
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.X.GetValue())
+	}},
+	0x05: {Opcode: 0x05, Label: "ORA", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v | cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x25: {Opcode: 0x25, Label: "AND", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		a := cpu.A.GetValue()
+		r := v & a
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x45: {Opcode: 0x45, Label: "EOR", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v ^ cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x65: {Opcode: 0x65, Label: "ADC", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := uint16(v) + uint16(cpu.A.GetValue()) + uint16(cpu.Flags.GetFlagUint8(gemu.Carry))
+		cf := false
+		if r > 0xFF {
+			r = 0 //r - 0xFF
+			cf = true
+		}
+		r8 := uint8(r)
+
+		cpu.Flags.SetFlag(gemu.Carry, cf)
+		cpu.Flags.SetZeroByValue(r8)
+		of := (r8 ^ cpu.A.GetValue()) & (r8 ^ v) & 0x80
+		cpu.Flags.SetFlag(gemu.Overflow, of != 0)
+		cpu.Flags.SetNegative(r8)
+		cpu.A.SetRegister(r8)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xC5: {Opcode: 0xC5, Label: "CMP", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		a := cpu.A.GetValue()
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := a - v
+		cpu.Flags.SetFlag(gemu.Carry, a >= v)
+		// cpu.Flags.SetZeroByValue(r)
+		cpu.Flags.SetFlag(gemu.Zero, a == v)
+		// cpu.Flags.SetZero(r)
+		cpu.Flags.SetNegative(r)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xE5: {Opcode: 0xE5, Label: "SBC", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		a := cpu.A.GetValue()
+		c := cpu.Flags.GetFlagUint8(gemu.Carry)
+		r := int8(a) + int8(^v) + int8(c)
+
+		r8 := uint8(r)
+
+		cpu.Flags.SetFlag(gemu.Zero, r == 0 && !cpu.Flags.GetFlag(gemu.Negative))
+
+		of := (r8 ^ a) & (r8 ^ ^v) & 0x80
+		cpu.Flags.SetFlag(gemu.Overflow, of != 0)
+
+		cpu.Flags.SetNegative(r8)
+		if cpu.Flags.GetFlag(gemu.Negative) {
+			cpu.Flags.SetFlag(gemu.Carry, false)
+		} else {
+			cpu.Flags.SetFlag(gemu.Carry, true)
+		}
+
+		cpu.A.SetRegister(r8)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xE4: {Opcode: 0xE4, Label: "CPX", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := cpu.X.GetValue() - v
+		cpu.Flags.SetFlag(gemu.Carry, cpu.X.GetValue() >= v)
+		cpu.Flags.SetZeroByValue(r)
+		cpu.Flags.SetNegative(r)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xC4: {Opcode: 0xC4, Label: "CPY", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := cpu.Y.GetValue() - v
+		cpu.Flags.SetFlag(gemu.Carry, cpu.Y.GetValue() >= v)
+		cpu.Flags.SetZeroByValue(r)
+		cpu.Flags.SetNegative(r)
+		return 3, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x46: {Opcode: 0x46, Label: "LSR", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// value = value >> 1, or visually: 0 -> [76543210] -> C
+		ta, s := cpu.Fetch()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		cpu.Flags.SetCarry(a)
+		v := a >> 1
+		cpu.A.SetRegister(a)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetFlag(gemu.Negative, false)
+		cpu.Store(uint16(ta), v)
+		return 5, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x06: {Opcode: 0x06, Label: "ASL", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a << 1
+		cpu.A.SetRegister(a)
+		cpu.Flags.SetFlag(gemu.Carry, a&0x80 != 0)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 5, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x66: {Opcode: 0x66, Label: "ROR", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// value = value >> 1 through C, or visually: C -> [76543210] -> C
+		ta, s := cpu.Fetch()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a >> 1
+		if cpu.Flags.GetFlag(gemu.Carry) {
+			v = v | 0x80
+		}
+		cpu.Flags.SetFlag(gemu.Carry, a&0x01 != 0)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 5, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x26: {Opcode: 0x26, Label: "ROL", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// value = value >> 1 through C, or visually: C -> [76543210] -> C
+		ta, s := cpu.Fetch()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a << 1
+		if cpu.Flags.GetFlag(gemu.Carry) {
+			v = v | 0x01
+		}
+		cpu.Flags.SetFlag(gemu.Carry, a&0x80 != 0)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 5, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xE6: {Opcode: 0xE6, Label: "INC", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// memory = memory + 1
+		ta, s := cpu.Fetch()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a + 1
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 5, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xC6: {Opcode: 0xC6, Label: "DEC", Length: 2, AddressMode: cpu.ZeroPage, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// memory = memory + 1
+		ta, s := cpu.Fetch()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a - 1
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 5, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%02X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xAC: {Opcode: 0xAC, Label: "LDY", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(ta)
+		cpu.Y.SetRegister(v)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.TempValue = v
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x8C: {Opcode: 0x8C, Label: "STY", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		cpu.TempValue = cpu.FetchAddress(ta)
+		cpu.Store(ta, cpu.Y.GetValue())
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x2C: {Opcode: 0x2C, Label: "BIT", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		a, s := cpu.Fetch16()            // get the address
+		v := cpu.FetchAddress(uint16(a)) // get the value from that address
+		cpu.TempValue = uint8(v)
+		cpu.TempAddress = uint16(a)
+		r := v & cpu.A.GetValue()
+		cpu.Flags.SetZeroByValue(r)
+		cpu.Flags.SetOverflow(v)
+		cpu.Flags.SetNegative(v)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x0D: {Opcode: 0x0D, Label: "ORA", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v | cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x2D: {Opcode: 0x2D, Label: "AND", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v & cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x4D: {Opcode: 0x4D, Label: "EOR", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v ^ cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x6D: {Opcode: 0x6D, Label: "ADC", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := uint16(v) + uint16(cpu.A.GetValue()) + uint16(cpu.Flags.GetFlagUint8(gemu.Carry))
+		cf := false
+		if r > 0xFF {
+			r = 0 //r - 0xFF
+			cf = true
+		}
+		r8 := uint8(r)
+
+		cpu.Flags.SetFlag(gemu.Carry, cf)
+		cpu.Flags.SetZeroByValue(r8)
+		of := (r8 ^ cpu.A.GetValue()) & (r8 ^ v) & 0x80
+		cpu.Flags.SetFlag(gemu.Overflow, of != 0)
+		cpu.Flags.SetNegative(r8)
+		cpu.A.SetRegister(r8)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xCD: {Opcode: 0xCD, Label: "CMP", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		a := cpu.A.GetValue()
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := a - v
+		cpu.Flags.SetFlag(gemu.Carry, a >= v)
+		// cpu.Flags.SetZeroByValue(r)
+		cpu.Flags.SetFlag(gemu.Zero, a == v)
+		// cpu.Flags.SetZero(r)
+		cpu.Flags.SetNegative(r)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xED: {Opcode: 0xED, Label: "SBC", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		a := cpu.A.GetValue()
+		c := cpu.Flags.GetFlagUint8(gemu.Carry)
+		r := int8(a) + int8(^v) + int8(c)
+
+		r8 := uint8(r)
+
+		cpu.Flags.SetFlag(gemu.Zero, r == 0 && !cpu.Flags.GetFlag(gemu.Negative))
+
+		of := (r8 ^ a) & (r8 ^ ^v) & 0x80
+		cpu.Flags.SetFlag(gemu.Overflow, of != 0)
+
+		cpu.Flags.SetNegative(r8)
+		if cpu.Flags.GetFlag(gemu.Negative) {
+			cpu.Flags.SetFlag(gemu.Carry, false)
+		} else {
+			cpu.Flags.SetFlag(gemu.Carry, true)
+		}
+
+		cpu.A.SetRegister(r8)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xEC: {Opcode: 0xEC, Label: "CPX", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := cpu.X.GetValue() - v
+		cpu.Flags.SetFlag(gemu.Carry, cpu.X.GetValue() >= v)
+		cpu.Flags.SetZeroByValue(r)
+		cpu.Flags.SetNegative(r)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xCC: {Opcode: 0xCC, Label: "CPY", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := cpu.Y.GetValue() - v
+		cpu.Flags.SetFlag(gemu.Carry, cpu.Y.GetValue() >= v)
+		cpu.Flags.SetZeroByValue(r)
+		cpu.Flags.SetNegative(r)
+		return 4, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x4E: {Opcode: 0x4E, Label: "LSR", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// value = value >> 1, or visually: 0 -> [76543210] -> C
+		ta, s := cpu.Fetch16()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		cpu.Flags.SetCarry(a)
+		v := a >> 1
+		cpu.A.SetRegister(a)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetFlag(gemu.Negative, false)
+		cpu.Store(uint16(ta), v)
+		return 6, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x0E: {Opcode: 0x0E, Label: "ASL", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		ta, s := cpu.Fetch16()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a << 1
+		cpu.A.SetRegister(a)
+		cpu.Flags.SetFlag(gemu.Carry, a&0x80 != 0)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 6, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x6E: {Opcode: 0x6E, Label: "ROR", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// value = value >> 1 through C, or visually: C -> [76543210] -> C
+		ta, s := cpu.Fetch16()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a >> 1
+		if cpu.Flags.GetFlag(gemu.Carry) {
+			v = v | 0x80
+		}
+		cpu.Flags.SetFlag(gemu.Carry, a&0x01 != 0)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 6, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0x2E: {Opcode: 0x2E, Label: "ROL", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// value = value >> 1 through C, or visually: C -> [76543210] -> C
+		ta, s := cpu.Fetch16()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a << 1
+		if cpu.Flags.GetFlag(gemu.Carry) {
+			v = v | 0x01
+		}
+		cpu.Flags.SetFlag(gemu.Carry, a&0x80 != 0)
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 6, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xEE: {Opcode: 0xEE, Label: "INC", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// memory = memory + 1
+		ta, s := cpu.Fetch16()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a + 1
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 6, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xCE: {Opcode: 0xCE, Label: "DEC", Length: 3, AddressMode: cpu.Absolute, Function: func(cpu *cpu.CPU) (uint8, string) {
+		// memory = memory + 1
+		ta, s := cpu.Fetch16()
+		a := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = a
+		v := a - 1
+		cpu.Flags.SetZeroByValue(v)
+		cpu.Flags.SetNegative(v)
+		cpu.Store(uint16(ta), v)
+		return 6, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("$%04X = %02X", cpu.TempAddress, cpu.TempValue)
+	}},
+	0xB1: {Opcode: 0xB1, Label: "LDA", Length: 2, AddressMode: cpu.IndirectY, Function: func(cpu *cpu.CPU) (uint8, string) {
+		cc := uint8(5)
+
+		base, s := cpu.Fetch()
+		lo := cpu.FetchAddress(uint16(base))
+		hi := cpu.FetchAddress(uint16(base + 1))
+		cpu.TempAddress_2 = ToAddress(hi, lo)
+		ta := cpu.TempAddress_2 + uint16(cpu.Y.GetValue())
+		cpu.TempValue16 = ta
+
+		// accumulator will be the val from this address
+		a := cpu.FetchAddress(ta)
+		cpu.A.SetRegister(a)
+
+		cpu.Flags.SetZeroByValue(a)
+		cpu.Flags.SetNegative(a)
+
+		if PageCrossed(ta, cpu.TempAddress_2) {
+			cc += 1
+		}
+
+		return cc, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("($%02X),Y = %04X @ %04X = %02X", cpu.TempAddress, cpu.TempAddress_2, cpu.TempValue16, cpu.A.GetValue())
+	}},
+	0x11: {Opcode: 0x11, Label: "ORA", Length: 2, AddressMode: cpu.IndirectY, Function: func(cpu *cpu.CPU) (uint8, string) {
+		cc := uint8(5)
+
+		base, s := cpu.Fetch()
+		lo := cpu.FetchAddress(uint16(base))
+		hi := cpu.FetchAddress(uint16(base + 1))
+		cpu.TempAddress_2 = ToAddress(hi, lo)
+		ta := cpu.TempAddress_2 + uint16(cpu.Y.GetValue())
+		cpu.TempValue16 = ta
+
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v | cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+
+		if PageCrossed(ta, cpu.TempAddress_2) {
+			cc += 1
+		}
+		return cc, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("($%02X),Y = %04X @ %04X = %02X", cpu.TempAddress, cpu.TempAddress_2, cpu.TempValue16, cpu.TempValue)
+	}},
+	0x31: {Opcode: 0x31, Label: "AND", Length: 2, AddressMode: cpu.IndirectY, Function: func(cpu *cpu.CPU) (uint8, string) {
+		cc := uint8(5)
+
+		base, s := cpu.Fetch()
+		lo := cpu.FetchAddress(uint16(base))
+		hi := cpu.FetchAddress(uint16(base + 1))
+		cpu.TempAddress_2 = ToAddress(hi, lo)
+		ta := cpu.TempAddress_2 + uint16(cpu.Y.GetValue())
+		cpu.TempValue16 = ta
+
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v & cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+
+		if PageCrossed(ta, cpu.TempAddress_2) {
+			cc += 1
+		}
+		return cc, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("($%02X),Y = %04X @ %04X = %02X", cpu.TempAddress, cpu.TempAddress_2, cpu.TempValue16, cpu.TempValue)
+	}},
+	0x51: {Opcode: 0x51, Label: "EOR", Length: 2, AddressMode: cpu.IndirectY, Function: func(cpu *cpu.CPU) (uint8, string) {
+		cc := uint8(5)
+
+		base, s := cpu.Fetch()
+		lo := cpu.FetchAddress(uint16(base))
+		hi := cpu.FetchAddress(uint16(base + 1))
+		cpu.TempAddress_2 = ToAddress(hi, lo)
+		ta := cpu.TempAddress_2 + uint16(cpu.Y.GetValue())
+		cpu.TempValue16 = ta
+
+		v := cpu.FetchAddress(uint16(ta))
+		cpu.TempValue = v
+		r := v ^ cpu.A.GetValue()
+		cpu.A.SetRegister(r)
+		cpu.Flags.SetNegative(r)
+		cpu.Flags.SetZeroByValue(r)
+
+		if PageCrossed(ta, cpu.TempAddress_2) {
+			cc += 1
+		}
+		return cc, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("($%02X),Y = %04X @ %04X = %02X", cpu.TempAddress, cpu.TempAddress_2, cpu.TempValue16, cpu.TempValue)
+	}},
+	0x71: {Opcode: 0x71, Label: "ADC", Length: 2, AddressMode: cpu.IndirectY, Function: func(cpu *cpu.CPU) (uint8, string) {
+		cc := uint8(5)
+
+		base, s := cpu.Fetch()
+		lo := cpu.FetchAddress(uint16(base))
+		hi := cpu.FetchAddress(uint16(base + 1))
+		cpu.TempAddress_2 = ToAddress(hi, lo)
+		ta := cpu.TempAddress_2 + uint16(cpu.Y.GetValue())
+		cpu.TempValue16 = ta
+		cpu.TempAddressValue = cpu.FetchAddress(ta)
+
+		r := uint16(cpu.TempAddressValue) + uint16(cpu.A.GetValue()) + uint16(cpu.Flags.GetFlagUint8(gemu.Carry))
+		cf := false
+		if r > 0xFF {
+			r = 0 //r - 0xFF
+			cf = true
+		}
+		r8 := uint8(r)
+
+		cpu.Flags.SetFlag(gemu.Carry, cf)
+		cpu.Flags.SetZeroByValue(r8)
+		of := (r8 ^ cpu.A.GetValue()) & (r8 ^ cpu.TempAddressValue) & 0x80
+		cpu.Flags.SetFlag(gemu.Overflow, of != 0)
+		cpu.Flags.SetNegative(r8)
+		cpu.A.SetRegister(r8)
+
+		if PageCrossed(ta, cpu.TempAddress_2) {
+			cc += 1
+		}
+
+		return cc, s
+	}, PrintDetails: func(cpu cpu.CPU, ins Instruction) string {
+		return fmt.Sprintf("($%02X),Y = %04X @ %04X = %02X", cpu.TempAddress, cpu.TempAddress_2, cpu.TempValue16, cpu.TempAddressValue)
 	}},
 }
 
@@ -970,7 +1577,7 @@ func main() {
 			}
 
 			// generate the current state
-			state := cpu.PrintDetails(instruction.AddressMode)
+			state := cpu.PrintDetails(instruction.AddressMode, counter)
 
 			// execute instruction
 			cr, is := instruction.Function(&cpu)
