@@ -143,6 +143,7 @@ const (
 	Accumulator
 	IndirectX
 	IndirectY
+	Indirect
 )
 
 func (cpu CPU) PrintDetails(addressMode uint8, counter uint64) string {
